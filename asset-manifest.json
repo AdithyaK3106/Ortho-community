@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/Ortho-Community/static/css/main.aae4eeb9.css",
+    "main.js": "/Ortho-Community/static/js/main.b3271396.js",
+    "index.html": "/Ortho-Community/index.html",
+    "main.aae4eeb9.css.map": "/Ortho-Community/static/css/main.aae4eeb9.css.map",
+    "main.b3271396.js.map": "/Ortho-Community/static/js/main.b3271396.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.aae4eeb9.css",
+    "static/js/main.b3271396.js"
+  ]
+}
