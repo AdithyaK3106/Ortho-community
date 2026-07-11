@@ -604,24 +604,32 @@
   }
 </script>
 <script>
-  // pick the repo from ?repo= and load its data file synchronously
+  // pick the repo from ?repo= and load its data file
   (() => {
     const repos = window.ORTHO_REPOS || [];
     const want = (new URLSearchParams(location.search).get("repo") || "").replace(/[^a-z0-9_-]/g, "");
     const name = repos.some(r => r.name === want) ? want : (repos[0] && repos[0].name);
     window.ORTHO_REPO_NAME = name;
     if (name) {
-      const script = document.createElement('script');
-      script.src = `data/${name}.js`;
-      document.head.appendChild(script);
+      // Use fetch + eval to ensure synchronous execution, or add defer to wait for load
+      fetch(`data/${name}.js`)
+        .then(r => r.text())
+        .then(text => {
+          eval(text);
+          // Trigger dashboard initialization after data loads
+          if (window.__dashboardInit) window.__dashboardInit();
+        })
+        .catch(e => console.error('Failed to load data:', e));
     }
   })();
 </script>
 <script>
-(() => {
-  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
-  try {
-    const D = window.ORTHO_DATA;
+  // Defer dashboard initialization until data is loaded
+  window.__dashboardInit = () => {
+    (() => {
+      const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      try {
+        const D = window.ORTHO_DATA;
     if (!D) {
       document.getElementById("boot").remove();
       document.querySelector("main").innerHTML =
@@ -1669,6 +1677,12 @@
     document.getElementById("boot").remove();
     document.querySelector("main").innerHTML =
       '<p style="padding:60px 0;color:#c3c2b7">Error loading dashboard: ' + esc(e.message) + '</p>';
+  }
+    })();
+  };
+  // Call init immediately if data already loaded, otherwise defer
+  if (window.ORTHO_DATA) {
+    window.__dashboardInit();
   }
 })();
 </script>
