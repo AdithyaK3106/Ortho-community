@@ -597,25 +597,34 @@
 
 <script src="data/manifest.js"></script>
 <script>
-  // redirect to click repo if no repo specified
-  const want = new URLSearchParams(location.search).get("repo");
-  if (!want) {
-    location.search = "?repo=click";
-  }
-</script>
-<script>
-  // pick the repo from ?repo= and load its data file
-  (() => {
+  // Load the repo data file asynchronously
+  function loadRepoData() {
     const repos = window.ORTHO_REPOS || [];
-    const want = (new URLSearchParams(location.search).get("repo") || "").replace(/[^a-z0-9_-]/g, "");
+    let want = (new URLSearchParams(location.search).get("repo") || "").replace(/[^a-z0-9_-]/g, "");
+
+    // redirect to click repo if no repo specified
+    if (!want) {
+      if (repos.length > 0) {
+        want = repos[0].name;
+      } else {
+        want = "click";
+      }
+    }
+
+    // verify repo exists, default to first
     const name = repos.some(r => r.name === want) ? want : (repos[0] && repos[0].name);
     window.ORTHO_REPO_NAME = name;
-    if (name) document.write(`<script src="data/${name}.js"><\/script>`);
-  })();
-</script>
-<script>
-// Wait for data to load then initialize
-setTimeout(() => {
+
+    if (name) {
+      const script = document.createElement('script');
+      script.src = `data/${name}.js`;
+      script.onload = initDashboard;
+      script.onerror = () => console.error('Failed to load data file');
+      document.head.appendChild(script);
+    }
+  }
+
+  function initDashboard() {
 (() => {
   const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
   try {
@@ -1668,8 +1677,14 @@ setTimeout(() => {
     document.querySelector("main").innerHTML =
       '<p style="padding:60px 0;color:#c3c2b7">Error loading dashboard: ' + esc(e.message) + '</p>';
   }
-})();
-}, 100); // Wait 100ms for data to load
+  }
+
+  // Start loading data when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadRepoData);
+  } else {
+    loadRepoData();
+  }
 </script>
 </body>
 </html>
