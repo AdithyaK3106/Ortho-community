@@ -29,6 +29,12 @@
         <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
         <script>
           (function(){
+            var params = new URLSearchParams(window.location.search);
+            var path = params.get('p');
+            if(path){
+              sessionStorage.redirect = path;
+              history.replaceState(null, null, '/Ortho-Community' + path);
+            }
             var redirect = sessionStorage.redirect;
             delete sessionStorage.redirect;
             if(redirect && redirect !== location.href){
