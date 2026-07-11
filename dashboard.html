@@ -600,7 +600,13 @@
   // pick the repo from ?repo= and load its data file synchronously (works on file://)
   (() => {
     const repos = window.ORTHO_REPOS || [];
-    const want = (new URLSearchParams(location.search).get("repo") || "").replace(/[^a-z0-9_-]/g, "");
+    let want = (new URLSearchParams(location.search).get("repo") || "").replace(/[^a-z0-9_-]/g, "");
+    // default to first repo if none specified
+    if (!want && repos.length > 0) {
+      want = repos[0].name;
+      window.location.search = `?repo=${want}`;
+      return;
+    }
     const name = repos.some(r => r.name === want) ? want : (repos[0] && repos[0].name);
     window.ORTHO_REPO_NAME = name;
     if (name) document.write(`<script src="data/${name}.js"><\/script>`);
