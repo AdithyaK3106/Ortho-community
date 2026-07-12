@@ -633,26 +633,6 @@
     && !/(^|\/)(test_|conftest\.py|setup\.py)/.test(f);
   const coreFiles = files.filter(isCore).length ? files.filter(isCore) : files;
 
-  /* ================= DEBUG LOGGING ================= */
-  console.log("Ortho Dashboard Analysis - Data Integrity Check");
-  console.log("Repository: " + D.repo.name + " (" + D.repo.slug + ")");
-  console.log("Files: " + files.length + " (core: " + coreFiles.length + ")");
-  console.log("Edges: " + D.edges.length);
-  console.log("Circular dependencies: " + D.cycles.length + " cycles detected");
-  console.log("Architecture: " + A.style + "@" + A.confidence.toFixed(2) + " confidence");
-  console.log("Debt entries: " + Object.keys(D.debt).length + "/" + files.length + " (" + (Object.keys(D.debt).length / files.length * 100).toFixed(1) + "%)");
-  console.log("Impact entries: " + Object.keys(D.impact).length + "/" + files.length);
-  console.log("Benchmarks: " + (D.benchmarks.repo_results ? D.benchmarks.repo_results.length + " suites tested" : "no validation data"));
-  console.log("Parse errors: " + D.repo.parse_errors);
-  if (D.cycles.length > 0) {
-    console.log("First 3 cycles:");
-    D.cycles.slice(0, 3).forEach((c, i) => {
-      const cycle_str = Array.isArray(c) ? c.slice(0, 3).join(" -> ") + "..." : String(c);
-      console.log("  " + (i+1) + ". " + cycle_str);
-    });
-  }
-  console.log("---");
-
   /* ---------- node classification ---------- */
   const classifyNode = f => {
     const p = f.toLowerCase();
@@ -1584,16 +1564,6 @@
     ];
     const ts = $("#trust-strip");
     trustItems.forEach(t => ts.appendChild(el("div", "trust-item", `<span class="ti-icon">✓</span><b>${esc(t.title)}</b><span>${esc(t.body)}</span>`)));
-
-    // Validation status indicator
-    const validatedRepos = datasets.map(d => d.manifest.repo);
-    const validationNote = document.createElement("div");
-    validationNote.style.cssText = "color:var(--muted);font-size:12px;margin-top:16px;padding:10px;border-top:1px solid var(--border-soft);display:flex;gap:8px;align-items:baseline";
-    const currentRepoIsValidated = B.repo_results !== null && B.repo_results !== undefined;
-    const validationIcon = currentRepoIsValidated ? "✓" : "○";
-    const validationColor = currentRepoIsValidated ? "var(--good)" : "var(--muted)";
-    validationNote.innerHTML = `<span style="color:${validationColor};font-weight:700">${validationIcon}</span><span><b>${D.repo.name}</b> is ${currentRepoIsValidated ? "validated" : "not yet validated"} against ground truth. ${currentRepoIsValidated ? "This repo has " + (B.repo_results ? B.repo_results.length : 0) + " benchmark suites tested." : "Validated repos: " + (validatedRepos.length > 0 ? validatedRepos.join(", ") : "Click, Flask")}</span>`;
-    ts.parentNode.insertBefore(validationNote, ts.nextSibling);
 
     const tiles = [
       { v: fmt(B.test_count), k: "benchmark tests", note: "verified by real pytest runs" },
