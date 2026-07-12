@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/static/css/main.115f96ea.css",
-    "main.js": "/static/js/main.f9202836.js",
-    "index.html": "/index.html",
-    "main.115f96ea.css.map": "/static/css/main.115f96ea.css.map",
-    "main.f9202836.js.map": "/static/js/main.f9202836.js.map"
+    "main.css": "/Ortho-community/static/css/main.115f96ea.css",
+    "main.js": "/Ortho-community/static/js/main.2d17f429.js",
+    "index.html": "/Ortho-community/index.html",
+    "main.115f96ea.css.map": "/Ortho-community/static/css/main.115f96ea.css.map",
+    "main.2d17f429.js.map": "/Ortho-community/static/js/main.2d17f429.js.map"
   },
   "entrypoints": [
     "static/css/main.115f96ea.css",
-    "static/js/main.f9202836.js"
+    "static/js/main.2d17f429.js"
   ]
 }
