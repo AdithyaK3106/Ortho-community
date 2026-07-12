@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ortho — Engineering Intelligence Demo</title>
+<style>
+  /* ================= design tokens (dark, committed) ================= */
+  :root {
+    --page:      #0d0d0d;
+    --surface:   #1a1a19;
+    --surface-2: #222220;
+    --border:    rgba(255,255,255,0.10);
+    --border-soft: rgba(255,255,255,0.06);
+    --ink:       #ffffff;
+    --ink-2:     #c3c2b7;
+    --muted:     #898781;
+    --grid:      #2c2c2a;
+    --baseline:  #383835;
+    /* categorical (dark-stepped, fixed order) */
+    --s1: #3987e5; --s2: #199e70; --s3: #c98500; --s4: #008300;
+    --s5: #9085e9; --s6: #e66767; --s7: #d55181; --s8: #d95926;
+    /* status (icon+label always accompanies) */
+    --good: #0ca30c; --warn: #fab219; --serious: #ec835a; --critical: #d03b3b;
+    --radius: 14px;
+    --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+  ::selection { background: rgba(57,135,229,.35); }
+
+  /* ================= header ================= */
+  header {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; gap: 28px;
+    padding: 0 28px; height: 60px;
+    background: rgba(13,13,13,.82);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand .mark {
+    width: 22px; height: 22px; border-radius: 6px; align-self: center;
+    background: conic-gradient(from 220deg, #3987e5, #9085e9, #199e70, #3987e5);
+    box-shadow: 0 0 18px rgba(57,135,229,.45);
+  }
+  .brand b { font-size: 16px; letter-spacing: .04em; }
+  .brand span { color: var(--muted); font-size: 12px; }
+  nav { display: flex; gap: 6px; margin-left: 8px; }
+  .tab {
+    border: 0; background: transparent; color: var(--muted);
+    font: inherit; cursor: pointer;
+    padding: 7px 14px; border-radius: 9px;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 0;
+    transition: color .2s, background .2s;
+  }
+  .tab small { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
+  .tab .t { font-size: 13px; font-weight: 600; }
+  .tab:hover { color: var(--ink-2); background: rgba(255,255,255,.04); }
+  .tab.active { color: var(--ink); background: rgba(57,135,229,.14); }
+  .tab.active small { color: #86b6ef; opacity: 1; }
+  .repo-chip {
+    margin-left: auto; display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--ink-2);
+    border: 1px solid var(--border); border-radius: 99px; padding: 5px 14px;
+    background: var(--surface);
+  }
+  .repo-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
+  .repo-chip code { font-family: ui-monospace, Consolas, monospace; color: var(--ink); }
+  .repo-chip select {
+    background: transparent; border: 0; outline: none; cursor: pointer;
+    color: var(--ink); font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+  }
+  .repo-chip select option { background: var(--surface-2); color: var(--ink); }
+
+  /* ================= views & transitions ================= */
+  main { max-width: 1440px; margin: 0 auto; padding: 26px 28px 80px; }
+  .view { display: none; }
+  .view.on { display: block; animation: viewIn .45s cubic-bezier(.2,.7,.2,1); }
+  @keyframes viewIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  .view-head { margin: 8px 0 22px; }
+  .view-head .q { font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
+  .view-head .sub { color: var(--muted); margin-top: 4px; max-width: 720px; }
+
+  /* ================= cards / tiles ================= */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+  .card h3 {
+    font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .tile {
+    background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius);
+    padding: 14px 16px 12px;
+    animation: viewIn .5s cubic-bezier(.2,.7,.2,1) backwards;
+  }
+  .tile .v { font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+  .tile .v small { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .tile .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
+  .tile .note { font-size: 11px; color: var(--ink-2); margin-top: 4px; }
+
+  .grid-1 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-1 .span2 { grid-column: 1 / -1; }
+  @media (max-width: 980px) { .grid-1 { grid-template-columns: 1fr; } }
+
+  /* ================= graph ================= */
+  .graph-card { padding: 0; overflow: hidden; position: relative; }
+  .graph-toolbar {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 14px 20px; border-bottom: 1px solid var(--border-soft);
+  }
+  .graph-toolbar h3 { margin: 0; }
+  .seg { display: flex; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+  .seg button {
+    border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12px;
+    padding: 5px 12px; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .seg button + button { border-left: 1px solid var(--border-soft); }
+  .seg button.on { background: rgba(57,135,229,.16); color: var(--ink); }
+  .ghost-btn {
+    border: 1px solid var(--border); background: transparent; color: var(--ink-2);
+    font: inherit; font-size: 12px; padding: 5px 12px; border-radius: 9px; cursor: pointer;
+  }
+  .ghost-btn:hover { background: rgba(255,255,255,.05); color: var(--ink); }
+  .graph-hint { font-size: 12px; color: var(--muted); margin-left: auto; }
+  #graph-svg { display: block; width: 100%; height: 620px; cursor: grab; }
+  #graph-svg:active { cursor: grabbing; }
+  #graph-svg .edge { stroke: var(--grid); stroke-width: 1; fill: none; transition: opacity .2s, stroke .2s; }
+  #graph-svg.dense .edge { stroke-opacity: .38; }
+  #graph-svg.dense .node circle { stroke-width: .6; }
+  #graph-svg .node { cursor: pointer; transition: opacity .2s; }
+  #graph-svg .node circle { stroke: rgba(0,0,0,.5); stroke-width: 1; }
+  #graph-svg .node.dim, #graph-svg .edge.dim { opacity: .12; }
+  #graph-svg .edge.lit { stroke: #86b6ef; stroke-width: 1.4; opacity: .9; }
+  #graph-svg .nlabel {
+    font-size: 10px; fill: var(--ink-2); pointer-events: none;
+    paint-order: stroke; stroke: rgba(13,13,13,.85); stroke-width: 3px;
+  }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; padding: 12px 20px; border-top: 1px solid var(--border-soft); font-size: 12px; color: var(--ink-2); }
+  .legend .li { display: flex; align-items: center; gap: 7px; }
+  .legend .sw { width: 10px; height: 10px; border-radius: 3px; }
+
+  /* ================= bars ================= */
+  .bar-row { display: grid; grid-template-columns: 130px 1fr 52px; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .bar-row .bl { font-size: 12.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-row .tr { position: relative; height: 14px; background: rgba(255,255,255,.05); border-radius: 4px; overflow: hidden; }
+  .bar-row .fl { position: absolute; inset: 0 auto 0 0; border-radius: 4px; }
+  /* animate scaleX, not width: compositor-driven, so it renders reliably everywhere */
+  .bar-row .fl, .subsys .bar i { transform-origin: 0 50%; animation: grow .9s cubic-bezier(.2,.7,.2,1) backwards; }
+  @keyframes grow { from { transform: scaleX(0); } }
+  .bar-row .vv { font-size: 12px; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ================= layers ================= */
+  .layer-band {
+    border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 10px;
+    background: linear-gradient(90deg, rgba(57,135,229,.10), transparent 65%);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .layer-band .ln {
+    width: 34px; height: 34px; border-radius: 9px; flex: none;
+    display: grid; place-items: center; font-weight: 700; font-size: 15px;
+    background: rgba(57,135,229,.18); color: #86b6ef;
+  }
+  .layer-band .meta { min-width: 0; }
+  .layer-band .meta b { font-size: 13.5px; }
+  .layer-band .meta .files { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .layer-band .cnt { margin-left: auto; font-size: 12px; color: var(--ink-2); flex: none; }
+  .layer-arrow { text-align: center; color: var(--muted); font-size: 11px; margin: -4px 0 8px; }
+
+  /* ================= subsystems ================= */
+  .subsys { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
+  .subsys:last-child { border-bottom: 0; }
+  .subsys .sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .subsys .nm { font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .subsys .nm small { color: var(--muted); display: block; font-size: 11px; }
+  .subsys .bar { flex: 1; height: 10px; background: rgba(255,255,255,.05); border-radius: 4px; overflow: hidden; }
+  .subsys .bar i { display: block; height: 100%; border-radius: 4px; }
+  .subsys .n { font-size: 12px; color: var(--ink-2); width: 56px; text-align: right; font-variant-numeric: tabular-nums; flex: none; }
+
+  /* ================= evidence ================= */
+  .ev { list-style: none; }
+  .ev li { display: flex; gap: 10px; padding: 7px 0; font-size: 13px; color: var(--ink-2); border-bottom: 1px solid var(--border-soft); }
+  .ev li:last-child { border-bottom: 0; }
+  .ev li::before { content: "▸"; color: #86b6ef; flex: none; }
+
+  /* ================= view 2 ================= */
+  .impact-layout { display: grid; grid-template-columns: 300px 1fr; gap: 14px; align-items: start; }
+  @media (max-width: 980px) { .impact-layout { grid-template-columns: 1fr; } }
+  .file-picker input {
+    width: 100%; background: var(--surface-2); border: 1px solid var(--border); color: var(--ink);
+    font: inherit; font-size: 13px; padding: 9px 12px; border-radius: 9px; outline: none; margin-bottom: 10px;
+  }
+  .file-picker input:focus { border-color: rgba(57,135,229,.6); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .chip {
+    border: 1px solid var(--border); background: transparent; color: var(--ink-2);
+    font: inherit; font-size: 11.5px; padding: 4px 10px; border-radius: 99px; cursor: pointer;
+  }
+  .chip:hover { border-color: rgba(57,135,229,.6); color: var(--ink); }
+  .file-list { max-height: 560px; overflow-y: auto; overflow-x: hidden; margin: 0 -8px; padding: 0 8px; }
+  .fgroup { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding: 10px 8px 4px; }
+  .frow {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    border: 0; background: transparent; color: var(--ink-2); font: inherit; font-size: 12.5px;
+    padding: 6px 8px; border-radius: 7px; cursor: pointer; text-align: left;
+  }
+  .frow:hover { background: rgba(255,255,255,.05); color: var(--ink); }
+  .frow.sel { background: rgba(57,135,229,.16); color: var(--ink); }
+  .frow .fn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .frow .br { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
+  .frow .br.hot { color: var(--serious); }
+
+  #blast-svg { display: block; width: 100%; height: 520px; }
+  #blast-svg .ring { fill: none; stroke: var(--grid); stroke-dasharray: 3 5; }
+  #blast-svg .ripple { fill: none; stroke: rgba(57,135,229,.5); animation: ripple 2.6s ease-out infinite; }
+  #blast-svg .ripple.r2 { animation-delay: 1.3s; }
+  @keyframes ripple { from { r: 26; opacity: .8; } to { r: 300; opacity: 0; } }
+  #blast-svg .bedge { stroke: rgba(134,182,239,.28); stroke-width: 1; fill: none; }
+  #blast-svg .bnode { cursor: pointer; }
+  #blast-svg .bnode circle { stroke: rgba(0,0,0,.5); }
+  .pop { transform-box: fill-box; transform-origin: center; animation: pop .5s cubic-bezier(.2,.7,.2,1) backwards; }
+  @keyframes pop { from { transform: scale(0); } }
+  #blast-svg .blabel {
+    font-size: 10.5px; fill: var(--ink-2); pointer-events: none; text-anchor: middle;
+    paint-order: stroke; stroke: rgba(13,13,13,.9); stroke-width: 3px;
+  }
+  #blast-svg .center-label { font-size: 12px; font-weight: 700; fill: var(--ink); text-anchor: middle;
+    paint-order: stroke; stroke: rgba(13,13,13,.9); stroke-width: 4px; }
+  .ring-key { display: flex; gap: 18px; font-size: 12px; color: var(--ink-2); padding: 0 20px 14px; }
+  .ring-key .li { display: flex; align-items: center; gap: 7px; }
+  .ring-key .sw { width: 10px; height: 10px; border-radius: 50%; }
+
+  .risk-meter { position: relative; height: 12px; border-radius: 6px; background: rgba(255,255,255,.06); overflow: hidden; margin: 10px 0 6px; }
+  .risk-meter i { position: absolute; inset: 0 auto 0 0; border-radius: 6px; transform-origin: 0 50%; animation: grow .7s cubic-bezier(.2,.7,.2,1) backwards; }
+  .risk-label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+  .risk-label .ic { font-size: 15px; }
+  .dep-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .dep-cols { grid-template-columns: 1fr; } }
+  .dep-list { list-style: none; font-size: 12.5px; }
+  .dep-list li {
+    padding: 5px 0; color: var(--ink-2); border-bottom: 1px solid var(--border-soft);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+  }
+  .dep-list li:hover { color: var(--ink); }
+  .dep-list li:last-child { border-bottom: 0; }
+  .empty-note { color: var(--muted); font-size: 12.5px; padding: 6px 0; }
+
+  /* ================= view 3 ================= */
+  .trust-hero { text-align: center; padding: 26px 0 8px; }
+  .trust-hero h2 { font-size: 30px; font-weight: 700; letter-spacing: -.01em; }
+  .trust-hero p { color: var(--muted); margin-top: 6px; }
+  .pipeline { display: flex; align-items: stretch; gap: 0; overflow-x: auto; padding: 6px 2px 2px; }
+  .pstep { flex: 1; min-width: 150px; position: relative; padding: 14px 18px 14px 26px; background: var(--surface-2); border: 1px solid var(--border-soft); }
+  .pstep:first-child { border-radius: 10px 0 0 10px; padding-left: 18px; }
+  .pstep:last-child { border-radius: 0 10px 10px 0; }
+  .pstep::after {
+    content: ""; position: absolute; right: -11px; top: 50%; transform: translateY(-50%) rotate(45deg);
+    width: 20px; height: 20px; background: inherit; border-right: 1px solid var(--border-soft); border-top: 1px solid var(--border-soft);
+    z-index: 1;
+  }
+  .pstep:last-child::after { display: none; }
+  .pstep b { display: block; font-size: 13px; }
+  .pstep span { font-size: 11.5px; color: var(--muted); }
+  .ds-card .commit { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; color: #86b6ef; }
+  .gt-counts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .gt-counts .g {
+    border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; font-size: 11.5px; color: var(--ink-2);
+  }
+  .gt-counts .g b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .honest {
+    border-left: 3px solid var(--warn); background: rgba(250,178,25,.06);
+    border-radius: 0 10px 10px 0; padding: 14px 16px; font-size: 13px; color: var(--ink-2);
+  }
+  .honest b { color: var(--ink); }
+
+  /* ================= tooltip ================= */
+  #tip {
+    position: fixed; z-index: 100; pointer-events: none; display: none;
+    background: #222220; border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; font-size: 12px; color: var(--ink-2); max-width: 300px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  }
+  #tip b { color: var(--ink); display: block; margin-bottom: 3px; font-size: 12.5px; }
+  #tip .tr2 { display: flex; justify-content: space-between; gap: 16px; }
+  #tip .tr2 span:last-child { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  /* ================= analyze overlay ================= */
+  #boot {
+    position: fixed; inset: 0; z-index: 200; display: grid; place-items: center;
+    background: radial-gradient(1200px 700px at 50% 30%, #131a24, var(--page));
+    transition: opacity .6s ease, visibility .6s;
+  }
+  #boot.gone { opacity: 0; visibility: hidden; }
+  .boot-card { width: min(560px, 92vw); }
+  .boot-brand { display: flex; align-items: center; gap: 12px; justify-content: center; margin-bottom: 10px; }
+  .boot-brand .mark { width: 34px; height: 34px; border-radius: 9px;
+    background: conic-gradient(from 220deg, #3987e5, #9085e9, #199e70, #3987e5);
+    box-shadow: 0 0 34px rgba(57,135,229,.5); }
+  .boot-brand b { font-size: 24px; letter-spacing: .04em; }
+  .boot-sub { text-align: center; color: var(--muted); margin-bottom: 26px; }
+  .term {
+    background: rgba(26,26,25,.9); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px 20px; font-family: ui-monospace, Consolas, monospace; font-size: 13px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.5);
+  }
+  .term .cmd { color: var(--ink); margin-bottom: 14px; }
+  .term .cmd::before { content: "$ "; color: #199e70; }
+  .bstep { display: flex; align-items: center; gap: 10px; padding: 5px 0; color: var(--muted); opacity: 0; transform: translateY(6px); transition: all .4s ease; }
+  .bstep.show { opacity: 1; transform: none; }
+  .bstep .st { width: 16px; text-align: center; flex: none; }
+  .bstep .spin { display: inline-block; width: 11px; height: 11px; border: 2px solid var(--grid); border-top-color: #3987e5; border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .bstep.done { color: var(--ink-2); }
+  .bstep.done .st { color: var(--good); }
+  .bstep .val { margin-left: auto; color: var(--ink); font-variant-numeric: tabular-nums; opacity: 0; transition: opacity .4s; }
+  .bstep.done .val { opacity: 1; }
+  #boot-enter {
+    margin-top: 22px; width: 100%; border: 0; border-radius: 10px; padding: 12px;
+    font: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
+    background: linear-gradient(90deg, #256abf, #3987e5); color: #fff;
+    opacity: 0; transform: translateY(8px); transition: all .5s ease;
+  }
+  #boot-enter.show { opacity: 1; transform: none; }
+  #boot-enter:hover { filter: brightness(1.12); }
+  .boot-skip { display: block; margin: 12px auto 0; background: none; border: 0; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
+  .boot-skip:hover { color: var(--ink-2); }
+
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 30px 0 10px; }
+
+  /* ================= new sections (wow factor pass) ================= */
+  .insights-card .ev.insights-list li { font-size: 13.5px; }
+  .insights-card .ev.insights-list li b { color: var(--ink); }
+
+  .arch-hero-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; flex-wrap: wrap; }
+  .arch-style-name { font-size: 42px; font-weight: 700; letter-spacing: -.02em; text-transform: capitalize; color: var(--ink); }
+  .conf-badge { font-size: 13px; font-weight: 600; color: #86b6ef; background: rgba(57,135,229,.14); border: 1px solid rgba(57,135,229,.4); border-radius: 99px; padding: 4px 12px; }
+  .arch-explain { color: var(--ink-2); font-size: 14px; margin: 6px 0 10px; }
+  .view-summary { color: var(--ink-2); font-size: 13.5px; margin: 6px 0 4px; }
+
+  .ev.ev-check li::before { content: "✓"; color: var(--good); }
+
+  .debt-reason { font-size: 11.5px; color: var(--muted); margin: -6px 0 10px 2px; padding-left: 2px; }
+
+  .risk-chip { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; border: 1px solid; border-radius: 99px; padding: 4px 12px; }
+  .risk-score-sub { color: var(--muted); font-size: 12px; font-weight: 400; margin-left: 8px; }
+  .risk-explain { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+  #graph-svg .node circle.hotspot-glow { stroke: var(--serious); stroke-width: 2px; filter: drop-shadow(0 0 4px rgba(236,131,90,.6)); }
+  #graph-svg .node.node-isolated circle { opacity: .4; }
+  #graph-svg .node:hover circle { stroke: var(--ink); stroke-width: 2.4px; }
+
+  .trust-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 18px 0; }
+  .trust-item { background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
+  .trust-item .ti-icon { color: var(--good); font-size: 16px; font-weight: 700; }
+  .trust-item b { font-size: 13.5px; color: var(--ink); }
+  .trust-item span:not(.ti-icon) { font-size: 12px; color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ======================= analyze overlay ======================= -->
+<div id="boot">
+  <div class="boot-card">
+    <div class="boot-brand"><div class="mark"></div><b>Ortho</b></div>
+    <div class="boot-sub">Point it at a repository it has never seen.</div>
+    <div class="term">
+      <div class="cmd" id="boot-cmd">ortho analyze</div>
+      <div class="bstep" data-step><span class="st"><span class="spin"></span></span> Scanning repository <span class="val" data-v="files"></span></div>
+      <div class="bstep" data-step><span class="st"><span class="spin"></span></span> Extracting symbols <span class="val" data-v="symbols"></span></div>
+      <div class="bstep" data-step><span class="st"><span class="spin"></span></span> Building import &amp; call graphs <span class="val" data-v="graphs"></span></div>
+      <div class="bstep" data-step><span class="st"><span class="spin"></span></span> Detecting architecture <span class="val" data-v="arch"></span></div>
+    </div>
+    <button id="boot-enter">Explore the analysis →</button>
+    <button class="boot-skip" id="boot-skip">skip</button>
+  </div>
+</div>
+
+<header>
+  <div class="brand"><div class="mark"></div><b>Ortho</b><span>engineering intelligence</span></div>
+  <nav>
+    <button class="tab active" data-view="repo"><small>01 · Repository</small><span class="t">What is this repo?</span></button>
+    <button class="tab" data-view="impact"><small>02 · Impact</small><span class="t">What if I change it?</span></button>
+    <button class="tab" data-view="trust"><small>03 · Trust</small><span class="t">Why believe it?</span></button>
+  </nav>
+  <div class="repo-chip"><span class="dot"></span> analyzed
+    <select id="repo-select" title="Switch repository"></select>
+    <span id="chip-meta"></span>
+  </div>
+</header>
+
+<main>
+  <!-- ======================= VIEW 1 ======================= -->
+  <section class="view on" id="view-repo">
+    <div class="view-head">
+      <div class="q">What is this repository?</div>
+      <div class="sub">One <code>ortho analyze</code> pass over an unfamiliar codebase — structure, architecture and health, recovered from the code itself.</div>
+    </div>
+
+    <div class="tiles" id="tiles"></div>
+
+    <div class="card insights-card" style="margin-bottom:14px">
+      <h3>Engineering Insights</h3>
+      <ul class="ev insights-list" id="insights-list"></ul>
+    </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <h3>Repository Composition</h3>
+        <div id="repo-composition" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+      </div>
+
+
+    <div class="grid-1">
+      <div class="card graph-card span2">
+        
+        <div class="graph-toolbar">
+          <h3>Repository Structure</h3>
+          <div class="seg" id="view-mode-seg">
+            <button data-mode="architecture" class="on">Architecture View</button>
+            <button data-mode="raw">Raw Dependency Graph</button>
+          </div>
+          <div class="seg" id="color-seg">
+            <button data-mode="role" class="on">Architectural Role</button>
+            <button data-mode="subsystem">Subsystem</button>
+            <button data-mode="layer">Layer</button>
+            <button data-mode="debt">Technical Debt</button>
+          </div>
+          <div style="width:100%; margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;" id="graph-filters">
+            <label style="font-size:12px; color:var(--ink-2); display:flex; gap:5px;"><input type="checkbox" id="filter-tests" checked> Collapse Tests</label>
+            <label style="font-size:12px; color:var(--ink-2); display:flex; gap:5px;"><input type="checkbox" id="filter-packages" checked> Collapse Packages</label>
+            <label style="font-size:12px; color:var(--ink-2); display:flex; gap:5px;"><input type="checkbox" id="filter-generated" checked> Hide Generated/Docs</label>
+            <label style="font-size:12px; color:var(--ink-2); display:flex; gap:5px;"><input type="checkbox" id="filter-business"> Only Business Logic</label>
+          </div>
+          <button class="ghost-btn" id="reset-zoom" style="margin-left:auto;">Reset view</button>
+        </div>
+
+        <svg id="graph-svg"></svg>
+        <div class="legend" id="graph-legend"></div>
+      </div>
+
+      <div class="card arch-hero">
+        <h3>Architecture Verdict</h3>
+        <div class="arch-hero-head">
+          <span id="arch-style" class="arch-style-name"></span>
+          <span id="arch-conf-badge" class="conf-badge"></span>
+        </div>
+        <div id="arch-explain" class="arch-explain"></div>
+        <div id="arch-summary" class="view-summary"></div>
+        <div id="arch-scores" style="margin:14px 0 18px"></div>
+        <h3 id="arch-evidence-heading">Evidence</h3>
+        <ul class="ev ev-check" id="arch-evidence"></ul>
+      </div>
+
+      <div>
+        <div class="card" style="margin-bottom:14px">
+          <h3>Layers <span style="text-transform:none;letter-spacing:0;font-weight:400">— dependencies flow downward</span></h3>
+          <div id="layers"></div>
+        </div>
+        <div class="card">
+          <h3>Subsystems <span style="text-transform:none;letter-spacing:0;font-weight:400">— multi-signal clustering</span></h3>
+          <div id="subsystems"></div>
+        </div>
+      </div>
+
+      <div class="card span2">
+        <h3>Highest Risk Modules <span style="text-transform:none;letter-spacing:0;font-weight:400">— what's driving technical debt</span></h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:26px" id="health-wrap">
+          <div id="debt-bars"></div>
+          <div>
+            <ul class="ev" id="debt-notes"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= VIEW 2 ======================= -->
+  <section class="view" id="view-impact">
+    <div class="view-head">
+      <div class="q">What happens if I change this file?</div>
+      <div class="sub">Pick a file — Ortho walks the real import and call graphs to compute who breaks, how far it spreads, and how risky the change is.</div>
+      <div class="view-summary">Estimate the engineering impact before modifying a file.</div>
+    </div>
+
+    <div class="impact-layout">
+      <div class="card file-picker">
+        <h3>Choose a file</h3>
+        <input id="file-search" type="search" placeholder="Filter files…" autocomplete="off">
+        <div class="chips" id="file-chips"></div>
+        <div class="file-list" id="file-list"></div>
+      </div>
+
+      <div>
+        <div class="tiles" id="impact-tiles" style="margin-bottom:14px"></div>
+        <div class="card graph-card" style="margin-bottom:14px">
+          <div class="graph-toolbar"><h3>Blast radius</h3><span class="graph-hint" id="blast-file"></span></div>
+          <svg id="blast-svg"></svg>
+          <div class="ring-key">
+            <span class="li"><span class="sw" style="background:var(--s6)"></span> changed file</span>
+            <span class="li"><span class="sw" style="background:var(--s1)"></span> direct dependents</span>
+            <span class="li"><span class="sw" style="background:var(--s5)"></span> transitive (≤3 hops)</span>
+          </div>
+        </div>
+        <div class="grid-1">
+          <div class="card">
+            <h3>Risk assessment</h3>
+            <div class="risk-label" id="risk-label"></div>
+            <div class="risk-meter"><i id="risk-fill"></i></div>
+            <div style="font-size:12px;color:var(--muted)" id="risk-scale">0 — low · 1 — critical</div>
+            <div class="risk-explain">This change propagates through import and call relationships.</div>
+            <h3 style="margin-top:18px">Evidence</h3>
+            <ul class="ev" id="impact-evidence"></ul>
+          </div>
+          <div class="card">
+            <h3>Dependents</h3>
+            <div class="dep-cols">
+              <div><div style="font-size:12px;color:var(--muted);margin-bottom:6px">Direct</div><ul class="dep-list" id="dep-direct"></ul></div>
+              <div><div style="font-size:12px;color:var(--muted);margin-bottom:6px">Transitive</div><ul class="dep-list" id="dep-trans"></ul></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= VIEW 3 ======================= -->
+  <section class="view" id="view-trust">
+    <div class="view-head" style="text-align:center">
+      <div class="q">Why should I trust these results?</div>
+      <div class="sub" style="margin:6px auto 0">Every number on the previous screens is checked against hand-authored ground truth by an automated benchmark framework — and the framework reports Ortho's failures as loudly as its wins.</div>
+      <div class="view-summary">Every metric shown in Ortho is validated against independent human-authored ground truth.</div>
+    </div>
+
+    <div class="trust-strip" id="trust-strip"></div>
+
+    <div class="tiles" id="trust-tiles" style="max-width:1000px;margin:22px auto 20px"></div>
+
+    <div class="card" style="margin-bottom:14px">
+      <h3>Validation pipeline</h3>
+      <div class="pipeline">
+        <div class="pstep"><b>Ground truth</b><span>hand-authored from real source &amp; git history</span></div>
+        <div class="pstep"><b>Adapter</b><span>the only code allowed to touch Ortho internals</span></div>
+        <div class="pstep"><b>5 suites</b><span>repository · architecture · impact · retrieval · efficiency</span></div>
+        <div class="pstep"><b>Metrics</b><span>precision / recall / ranking / correlation</span></div>
+        <div class="pstep"><b>Golden snapshot</b><span>locks behavior — any drift fails CI</span></div>
+      </div>
+    </div>
+
+    <div class="grid-1" style="margin-bottom:14px">
+      <div class="card ds-card" id="ds-flask"></div>
+      <div class="card ds-card" id="ds-click"></div>
+    </div>
+
+    <div class="grid-1">
+      <div class="card">
+        <h3 id="bench-title">Representative results</h3>
+        <div id="bench-bars"></div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:10px" id="bench-note"></div>
+      </div>
+      <div class="card">
+        <h3>Honesty as a feature</h3>
+        <div class="honest" style="margin-bottom:12px">
+          <b>The benchmark keeps Ortho honest.</b> It surfaced three real limitations — relative-import resolution,
+          retrieval searching analysis artifacts instead of raw source (scores ~0 on source-location questions, reported as-is),
+          and blast-radius divergence — documented in the dataset manifests instead of being tuned away.
+        </div>
+        <ul class="ev">
+          <li>Ground truth authored independently of Ortho's own output — click's hand-audited "flat" verdict genuinely disagrees with the tool.</li>
+          <li>Datasets pinned to exact commits; impact pairs verified against real <code>git show --stat</code> co-changes.</li>
+          <li>Verified by real pytest runs with archived logs — a golden-output regression test proves refactors are behavior-preserving.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>Ortho v3 · demo dashboard · all analysis data generated by the real Ortho pipeline on <span id="foot-repo"></span></footer>
+</main>
+
+<div id="tip"></div>
+
+<script src="data/manifest.js"></script>
+<script>
+  // pick the repo from ?repo= and load its data file synchronously (works on file://)
+  (() => {
+    const repos = window.ORTHO_REPOS || [];
+    const want = (new URLSearchParams(location.search).get("repo") || "").replace(/[^a-z0-9_-]/g, "");
+    const name = repos.some(r => r.name === want) ? want : (repos[0] && repos[0].name);
+    window.ORTHO_REPO_NAME = name;
+    if (name) document.write(`<script src="data/${name}.js"><\/script>`);
+  })();
+</script>
+<script>
+(() => {
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  try {
+    const D = window.ORTHO_DATA;
+    if (!D) {
+      document.getElementById("boot").remove();
+      document.querySelector("main").innerHTML =
+        '<p style="padding:60px 0;color:#c3c2b7">No analysis data found — run <code>python generate_data.py &lt;repo&gt;</code> first.</p>';
+      return;
+    }
+  const $ = (s, r) => (r || document).querySelector(s);
+  const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
+  const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+  const fmt = n => n.toLocaleString("en-US");
+  const CAT = ["#3987e5", "#199e70", "#c98500", "#9085e9", "#e66767", "#d55181", "#d95926", "#008300"];
+  const SEQ = ["#184f95", "#1c5cab", "#256abf", "#3987e5", "#5598e7", "#86b6ef", "#b7d3f6"]; // low→high on dark
+
+  const A = D.architecture;
+  const files = Object.keys(D.files);
+  const base = f => f.split("/").pop();
+  const disp = f => f.split("/").slice(-2).join("/"); // disambiguates app.py vs sansio/app.py
+  // "core" files for debt/suggestion purposes: skip tests, docs, examples, tooling
+  const isCore = f => !/(^|\/)(tests?|docs?|examples?|benchmarks?|scripts|tools)\//i.test(f)
+    && !/(^|\/)(test_|conftest\.py|setup\.py)/.test(f);
+  const coreFiles = files.filter(isCore).length ? files.filter(isCore) : files;
+
+  /* ================= DEBUG LOGGING ================= */
+  console.log("Ortho Dashboard Analysis - Data Integrity Check");
+  console.log("Repository: " + D.repo.name + " (" + D.repo.slug + ")");
+  console.log("Files: " + files.length + " (core: " + coreFiles.length + ")");
+  console.log("Edges: " + D.edges.length);
+  console.log("Circular dependencies: " + D.cycles.length + " cycles detected");
+  console.log("Architecture: " + A.style + "@" + A.confidence.toFixed(2) + " confidence");
+  console.log("Debt entries: " + Object.keys(D.debt).length + "/" + files.length + " (" + (Object.keys(D.debt).length / files.length * 100).toFixed(1) + "%)");
+  console.log("Impact entries: " + Object.keys(D.impact).length + "/" + files.length);
+  console.log("Benchmarks: " + (D.benchmarks.repo_results ? D.benchmarks.repo_results.length + " suites tested" : "no validation data"));
+  console.log("Parse errors: " + D.repo.parse_errors);
+  if (D.cycles.length > 0) {
+    console.log("First 3 cycles:");
+    D.cycles.slice(0, 3).forEach((c, i) => {
+      const cycle_str = Array.isArray(c) ? c.slice(0, 3).join(" -> ") + "..." : String(c);
+      console.log("  " + (i+1) + ". " + cycle_str);
+    });
+  }
+  console.log("---");
+
+  /* ---------- node classification ---------- */
+  const classifyNode = f => {
+    const p = f.toLowerCase();
+    const b = base(f).toLowerCase();
+    if (b === "__init__.py") return "Package";
+    if (p.includes("/test") || p.includes("conftest.py") || b.endsWith("_test.py")) return "Test";
+    if (p.includes("/generated") || p.includes("migration") || p.includes("cache") || p.includes("build")) return "Generated";
+    if (p.includes("/doc") || b.endsWith(".md") || b.endsWith(".rst")) return "Documentation";
+    if (p.includes("/example")) return "Examples";
+    if (p.includes("/script") || p.includes("/tool") || b.endsWith(".sh")) return "Scripts";
+    if (b === "setup.py" || b === "manage.py" || b.endsWith(".toml") || b.endsWith(".json") || b.endsWith(".yml") || b.includes("config") || b.includes("settings")) return "Configuration";
+    
+    // Architectural roles
+    if (b.includes("controller") || b.includes("view") || b.includes("api") || b.includes("route")) return "Controller";
+    if (b.includes("service") || b.includes("manager") || b.includes("handler")) return "Service";
+    if (b.includes("model") || b.includes("schema") || b.includes("entity") || b.includes("db") || b.includes("data")) return "Model";
+    if (b.includes("repo") || b.includes("store") || b.includes("dao")) return "Repository";
+    if (b.includes("util") || b.includes("helper") || b.includes("common") || b.includes("constant") || b.includes("type")) return "Utility";
+    
+    return "Business Logic";
+  };
+  
+  const roleColors = {
+    "Controller": "#e66767",
+    "Service": "#3987e5",
+    "Model": "#199e70",
+    "Repository": "#c98500",
+    "Utility": "#9085e9",
+    "Configuration": "#d95926",
+    "Test": "#52514e",
+    "Package": "#898781",
+    "Generated": "#52514e",
+    "Documentation": "#52514e",
+    "Examples": "#52514e",
+    "Scripts": "#52514e",
+    "Business Logic": "#3987e5"
+  };
+
+  const roleWeights = {
+    "Package": 0.25,
+    "Test": 0.30,
+    "Generated": 0.20,
+    "Documentation": 0.20,
+    "Examples": 0.20,
+    "Scripts": 0.20,
+    "Configuration": 0.40,
+    "Controller": 1.25,
+    "Service": 1.25,
+    "Model": 1.25,
+    "Repository": 1.25,
+    "Utility": 1.0,
+    "Business Logic": 1.25
+  };
+
+  files.forEach(f => {
+    D.files[f].role = classifyNode(f);
+  });
+
+
+  /* ---------- derived: subsystem names, ordered by size desc ---------- */
+  const subOrder = A.subsystems.map((m, i) => ({ i, members: m })).sort((a, b) => b.members.length - a.members.length);
+  const subLabel = members => {
+    // shared directory prefix if one exists, else the top-level areas it spans
+    const segs = members.map(f => f.split("/").slice(0, -1));
+    const common = [];
+    for (let i = 0; ; i++) {
+      const s = segs[0] && segs[0][i];
+      if (s == null || !segs.every(p => p[i] === s)) break;
+      common.push(s);
+    }
+    if (common.length) return common.join("/");
+    const c = {};
+    members.forEach(f => { const t = f.split("/")[0]; c[t] = (c[t] || 0) + 1; });
+    return Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0]).join(" · ");
+  };
+  const subColorOf = {}; // original subsystem index -> categorical slot (by size rank)
+  subOrder.forEach((s, rank) => subColorOf[s.i] = CAT[rank % CAT.length]);
+
+  /* ---------- tooltip ---------- */
+  const tip = $("#tip");
+  const showTip = (html, x, y) => {
+    tip.innerHTML = html; tip.style.display = "block";
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.min(x + 14, innerWidth - w - 12) + "px";
+    tip.style.top = Math.min(y + 14, innerHeight - h - 12) + "px";
+  };
+  const hideTip = () => tip.style.display = "none";
+
+  /* ---------- header: repo switcher ---------- */
+  (() => {
+    const sel = $("#repo-select");
+    (window.ORTHO_REPOS || [{ name: D.repo.name }]).forEach(r => {
+      const o = el("option", null, r.name + (r.style ? ` · ${r.style}` : ""));
+      o.value = r.name;
+      if (r.name === window.ORTHO_REPO_NAME) o.selected = true;
+      sel.appendChild(o);
+    });
+    // switching repos reloads with that repo's data; #repo skips the intro replay
+    sel.addEventListener("change", () => location.href = `?repo=${sel.value}#repo`);
+  })();
+  $("#chip-meta").textContent = `· ${fmt(D.repo.files_scanned)} files · ${A.style} architecture`;
+  $("#foot-repo").textContent = D.repo.slug || D.repo.name;
+
+  /* ================= navigation ================= */
+  const setView = name => {
+    $$(".tab").forEach(t => t.classList.toggle("active", t.dataset.view === name));
+    $$(".view").forEach(v => v.classList.toggle("on", v.id === "view-" + name));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  $$(".tab").forEach(t => t.addEventListener("click", () => setView(t.dataset.view)));
+
+  /* ================= boot / analyze sequence ================= */
+  (() => {
+    $("#boot-cmd").textContent = `ortho analyze ./${D.repo.name}`;
+    const steps = $$("[data-step]");
+    const vals = {
+      files: fmt(D.repo.files_scanned) + " Python files",
+      symbols: fmt(D.repo.symbols) + " symbols",
+      graphs: fmt(D.repo.imports_internal + D.repo.imports_external) + " imports · " + fmt(D.repo.call_edges) + " calls",
+      arch: A.style + " (" + A.confidence.toFixed(2) + ")",
+    };
+    let i = 0;
+    const tick = () => {
+      if (i > 0) {
+        const prev = steps[i - 1];
+        prev.classList.add("done");
+        prev.querySelector(".st").innerHTML = "✓";
+      }
+      if (i < steps.length) {
+        const s = steps[i];
+        s.classList.add("show");
+        s.querySelector(".val").textContent = vals[s.querySelector(".val").dataset.v];
+        i++; setTimeout(tick, 620);
+      } else {
+        const btn = $("#boot-enter");
+        if (btn) btn.classList.add("show");
+      }
+    };
+    setTimeout(tick, 500);
+    const close = () => $("#boot").classList.add("gone");
+    $("#boot-enter").addEventListener("click", close);
+    $("#boot-skip").addEventListener("click", close);
+    // deep link: #repo / #impact / #trust skips the intro and opens that view
+    const h = location.hash.replace("#", "");
+    if (["repo", "impact", "trust"].includes(h)) { close(); setView(h); }
+  })();
+
+  /* ================= VIEW 1: stat tiles ================= */
+  (() => {
+    const debtTop = Object.entries(D.debt).sort((a, b) => b[1].total - a[1].total)[0];
+    const tiles = [
+      { v: fmt(D.repo.files_scanned), k: "Python files", note: D.repo.parse_errors === 0 ? "100% parsed cleanly" : D.repo.parse_errors + " parse errors" },
+      { v: fmt(D.repo.symbols), k: "symbols extracted", note: "functions · classes · methods" },
+      { v: fmt(D.repo.imports_internal) + `<small> / ${fmt(D.repo.imports_external)}</small>`, k: "imports int / ext", note: "resolved to files" },
+      { v: fmt(D.repo.call_edges), k: "call edges", note: "confidence-scored" },
+      { v: `<span style="text-transform:capitalize">${A.style}</span>`, k: "architecture style", note: "confidence " + A.confidence.toFixed(2) },
+      { v: D.cycles.length, k: "circular dependencies", note: D.cycles.length === 0 ? "✓ clean import DAG" : "cycles detected" },
+      { v: disp(debtTop[0]), k: "top debt hotspot", note: "debt score " + debtTop[1].total.toFixed(2) },
+    ];
+    const wrap = $("#tiles");
+    tiles.forEach((t, i) => {
+      const d = el("div", "tile", `<div class="v">${t.v}</div><div class="k">${t.k}</div><div class="note">${t.note}</div>`);
+      d.style.animationDelay = (i * 60) + "ms";
+      wrap.appendChild(d);
+    });
+  })();
+
+  /* ================= COMPUTE GRAPH METRICS (importance, centrality, pagerank) ================= */
+  (() => {
+    const seen = new Set(), allEdges = [];
+    D.edges.forEach(([a, b]) => { const k = a + "→" + b; if (!seen.has(k) && a !== b) { seen.add(k); allEdges.push([a, b]); } });
+
+    // --- Compute PageRank & Approx Betweenness Centrality ---
+    const pr = {}; files.forEach(f => pr[f] = 1);
+    for (let i = 0; i < 20; i++) {
+      const next = {}; files.forEach(f => next[f] = 0.15);
+      files.forEach(f => {
+        const outs = allEdges.filter(e => e[0] === f).map(e => e[1]);
+        if (outs.length) {
+          const share = (0.85 * pr[f]) / outs.length;
+          outs.forEach(o => next[o] = (next[o] || 0) + share);
+        } else {
+          files.forEach(o => next[o] += (0.85 * pr[f]) / files.length);
+        }
+      });
+      files.forEach(f => pr[f] = next[f]);
+    }
+    const maxPr = Math.max(...Object.values(pr)) || 1;
+    files.forEach(f => pr[f] /= maxPr);
+
+    const adjFull = {}; files.forEach(f => adjFull[f] = new Set());
+    allEdges.forEach(([a, b]) => { adjFull[a].add(b); adjFull[b].add(a); });
+
+    const bc = {}; files.forEach(f => bc[f] = 0);
+    const sample = [...files].sort(() => Math.random() - 0.5).slice(0, Math.min(100, files.length));
+    sample.forEach(s => {
+      const S = [], P = {}, sigma = {}, d = {};
+      files.forEach(v => { P[v] = []; sigma[v] = 0; d[v] = -1; });
+      sigma[s] = 1; d[s] = 0;
+      const Q = [s];
+      while (Q.length) {
+        const v = Q.shift(); S.push(v);
+        (adjFull[v] || []).forEach(w => {
+          if (d[w] < 0) { d[w] = d[v] + 1; Q.push(w); }
+          if (d[w] === d[v] + 1) { sigma[w] += sigma[v]; P[w].push(v); }
+        });
+      }
+      const delta = {}; files.forEach(v => delta[v] = 0);
+      while (S.length) {
+        const w = S.pop();
+        P[w].forEach(v => { delta[v] += (sigma[v] / sigma[w]) * (1 + delta[w]); });
+        if (w !== s) bc[w] += delta[w];
+      }
+    });
+    const maxBc = Math.max(...Object.values(bc)) || 1;
+    files.forEach(f => bc[f] /= maxBc);
+
+    const maxIn = Math.max(...files.map(f => D.files[f].fanIn)) || 1;
+    const maxOut = Math.max(...files.map(f => D.files[f].fanOut)) || 1;
+
+    files.forEach(f => {
+      const rw = roleWeights[D.files[f].role] || 1;
+      D.files[f].centrality = bc[f];
+      D.files[f].pagerank = pr[f];
+      D.files[f].importance = (0.35 * bc[f] + 0.25 * pr[f] + 0.20 * (D.files[f].fanIn/maxIn) + 0.10 * (D.files[f].fanOut/maxOut) + 0.10 * rw) * rw;
+    });
+  })();
+
+  /* ================= VIEW 1: engineering insights (wow factor) ================= */
+  (() => {
+    const insights = [];
+
+    // 1. Architecture verdict
+    insights.push(`Repository follows <b>${esc(A.style)}</b> architecture (${Math.round(A.confidence * 100)}% confidence)${
+      A.alternative ? ` — next-closest fit was <b>${esc(A.alternative)}</b> (${Math.round(A.alternative_confidence * 100)}%)` : ""
+    }.`);
+
+    // 2. Cycles
+    insights.push(D.cycles.length === 0
+      ? `No circular dependencies detected — clean, acyclic import graph.`
+      : `${D.cycles.length} circular ${D.cycles.length === 1 ? "dependency" : "dependencies"} detected — may complicate incremental builds or refactors.`);
+
+    // 3. Highest-risk module
+    const debtEntries = Object.entries(D.debt).filter(([f]) => isCore(f));
+    if (debtEntries.length) {
+      const [topF, topD] = debtEntries.sort((a, b) => b[1].total - a[1].total)[0];
+      insights.push(`<b>${esc(disp(topF))}</b> is the highest-risk module (debt score ${topD.total.toFixed(2)})${
+        topD.evidence.length ? ` — ${esc(topD.evidence[0])}` : ""
+      }.`);
+    }
+
+    // 4. Dominant role composition
+    const comp = {};
+    files.forEach(f => { const r = D.files[f].role; comp[r] = (comp[r] || 0) + 1; });
+    const topRole = Object.entries(comp).sort((a, b) => b[1] - a[1])[0];
+    if (topRole) {
+      const pct = Math.round((topRole[1] / files.length) * 100);
+      insights.push(`<b>${esc(topRole[0])}</b> files represent ${pct}% of the repository (${fmt(topRole[1])} of ${fmt(files.length)}).`);
+    }
+
+    // 5. Test coverage
+    const testCount = comp["Test"] || 0;
+    insights.push(testCount > 0
+      ? `Tests account for ${Math.round((testCount / files.length) * 100)}% of all files (${fmt(testCount)} test file${testCount === 1 ? "" : "s"}).`
+      : `No dedicated test files detected in this scan.`);
+
+    // 6. Suggested starting point (fan-in based)
+    const cfFiles = files.filter(isCore).length ? files.filter(isCore) : files;
+    const byFanIn = [...cfFiles].sort((a, b) => D.files[b].fanIn - D.files[a].fanIn)[0];
+    if (byFanIn) {
+      insights.push(`Suggested starting point: <b>${esc(disp(byFanIn))}</b> — imported by ${D.files[byFanIn].fanIn} other files, a natural entry point for understanding this codebase.`);
+    }
+
+    // 7. Repository health
+    if (debtEntries.length) {
+      const avgDebt = debtEntries.reduce((s, [, d]) => s + d.total, 0) / debtEntries.length;
+      const parseOk = D.repo.parse_errors === 0;
+      const health = !parseOk ? "Fair" : avgDebt < 0.35 ? "Good" : avgDebt < 0.6 ? "Fair" : "Needs attention";
+      insights.push(`Overall repository health: <b>${health}</b> (avg core debt score ${avgDebt.toFixed(2)}${parseOk ? "" : `, ${D.repo.parse_errors} parse errors`}).`);
+    }
+
+    const wrap = $("#insights-list");
+    insights.slice(0, 8).forEach(i => wrap.appendChild(el("li", null, i)));
+  })();
+
+
+  /* ================= VIEW 1: repository composition ================= */
+  (() => {
+    const comp = {};
+    files.forEach(f => {
+      const r = D.files[f].role;
+      comp[r] = (comp[r] || 0) + 1;
+    });
+    const wrap = $("#repo-composition");
+    const sorted = Object.entries(comp).sort((a, b) => b[1] - a[1]);
+    sorted.forEach(([role, count]) => {
+      const pct = Math.round((count / files.length) * 100);
+      wrap.appendChild(el("div", "bar-row",
+        `<span class="bl" style="color:${roleColors[role]}">${role}</span>
+         <span class="tr"><i class="fl" style="background:${roleColors[role]}"></i></span>
+         <span class="vv">${pct}% (${count})</span>`));
+      const fl = wrap.lastElementChild.querySelector(".fl");
+      fl.style.width = pct + "%";
+    });
+  })();
+
+  /* ================= VIEW 1: architecture panel ================= */
+  (() => {
+    $("#arch-style").textContent = A.style;
+    $("#arch-conf-badge").textContent = Math.round(A.confidence * 100) + "% confidence";
+
+    // Style-keyed plain-English explanation
+    const styleExplain = {
+      layered: "Dependencies flow in one direction, layer to layer — lower layers never depend on higher ones.",
+      microservices: "The codebase is split into independently deployable services with narrow points of contact.",
+      flat: "Most files import each other directly with little layering — a small, low-ceremony codebase.",
+      hexagonal: "Core business logic is isolated from infrastructure behind defined ports and adapters.",
+    };
+    $("#arch-explain").textContent = styleExplain[A.style] || `Files are organized around a "${A.style}" pattern.`;
+
+    // Architecture summary line
+    $("#arch-summary").textContent = "Understand how the repository is organized and why Ortho classified it this way.";
+
+    // competing scores parsed from evidence
+    const compEv = A.evidence.find(e => e.startsWith("Competing scores"));
+    const scores = compEv ? compEv.replace("Competing scores: ", "").split(", ").map(p => { const [n, v] = p.split("="); return [n, +v]; }) : [];
+    const sc = $("#arch-scores");
+    scores.forEach(([name, v]) => {
+      const row = el("div", "bar-row",
+        `<span class="bl" style="${name === A.style ? "color:var(--ink);font-weight:600" : ""}">${name}</span>
+         <span class="tr"><i class="fl" style="background:${name === A.style ? "#3987e5" : "rgba(134,182,239,.35)"}"></i></span>
+         <span class="vv">${v.toFixed(2)}</span>`);
+      row.querySelector(".fl").style.width = (v * 100) + "%";
+      sc.appendChild(row);
+    });
+
+    // Dynamic evidence heading
+    $("#arch-evidence-heading").textContent = `Why Ortho classified this as ${A.style}`;
+
+    const evList = $("#arch-evidence");
+    A.evidence.filter(e => !e.startsWith("Competing") && !e.startsWith("Detected style") && !e.startsWith("Confidence"))
+      .forEach(e => evList.appendChild(el("li", null, esc(e))));
+  })();
+
+  /* ================= VIEW 1: layers ================= */
+  (() => {
+    const byLayer = {};
+    Object.entries(A.layers).forEach(([f, l]) => (byLayer[l] = byLayer[l] || []).push(f));
+    const wrap = $("#layers");
+    const layers = Object.keys(byLayer).map(Number).sort((a, b) => b - a); // top layer first
+    const maxL = layers[0];
+    const names = l =>
+      l === 0 ? "Foundation — imported by everything above"
+      : l === maxL ? "Top layer — depends on everything below"
+      : `Layer ${l} — intermediate`;
+    layers.forEach((l, idx) => {
+      const fs = byLayer[l];
+      const hubs = fs.map(f => [f, D.files[f].fanIn]).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => disp(x[0]));
+      wrap.appendChild(el("div", "layer-band",
+        `<div class="ln">L${l}</div>
+         <div class="meta"><b>${names(l)}</b>
+         <div class="files">key files: ${hubs.join(", ")}</div></div>
+         <div class="cnt">${fs.length} files</div>`));
+      if (idx < layers.length - 1) wrap.appendChild(el("div", "layer-arrow", "▼ &nbsp;imports flow downward &nbsp;▼"));
+    });
+  })();
+
+  /* ================= VIEW 1: subsystems ================= */
+  (() => {
+    const wrap = $("#subsystems");
+    const max = subOrder[0].members.length;
+    const shown = subOrder.slice(0, 10);
+    shown.forEach((s, rank) => {
+      const label = subLabel(s.members);
+      const cohesion = s.members.length > 1 ? "clustered from imports + calls + hierarchy" : "isolated module";
+      const row = el("div", "subsys",
+        `<span class="sw" style="background:${subColorOf[s.i]}"></span>
+         <div class="nm">${label}<small>${cohesion}</small></div>
+         <div class="bar"><i style="background:${subColorOf[s.i]}"></i></div>
+         <div class="n">${s.members.length} files</div>`);
+      row.querySelector("i").style.width = (s.members.length / max * 100) + "%";
+      wrap.appendChild(row);
+      row.addEventListener("mousemove", e => showTip(`<b>Subsystem · ${label}</b>${s.members.slice(0, 8).map(esc).join("<br>")}${s.members.length > 8 ? "<br>…" + (s.members.length - 8) + " more" : ""}`, e.clientX, e.clientY));
+      row.addEventListener("mouseleave", hideTip);
+    });
+    if (subOrder.length > shown.length)
+      wrap.appendChild(el("div", "empty-note", `… ${subOrder.length - shown.length} smaller subsystems not shown (${subOrder.length} total)`));
+  })();
+
+  /* ================= VIEW 1: debt hotspots ================= */
+  (() => {
+    const top = Object.entries(D.debt).filter(([f]) => isCore(f)).sort((a, b) => b[1].total - a[1].total).slice(0, 6);
+    const wrap = $("#debt-bars");
+    top.forEach(([f, d]) => {
+      const row = el("div", "bar-row",
+        `<span class="bl" title="${f}">${disp(f)}</span>
+         <span class="tr"><i class="fl" style="background:${SEQ[Math.min(6, Math.round(d.total * 8))]}"></i></span>
+         <span class="vv">${d.total.toFixed(2)}</span>`);
+      row.querySelector(".fl").style.width = (d.total * 100) + "%";
+      wrap.appendChild(row);
+      if (d.evidence.length) wrap.appendChild(el("div", "debt-reason", esc(d.evidence[0])));
+      row.addEventListener("mousemove", e => showTip(
+        `<b>${esc(f)}</b>
+         <div class="tr2"><span>coupling</span><span>${d.coupling.toFixed(2)}</span></div>
+         <div class="tr2"><span>churn</span><span>${d.churn.toFixed(2)}</span></div>
+         <div class="tr2"><span>complexity</span><span>${d.complexity.toFixed(2)}</span></div>`, e.clientX, e.clientY));
+      row.addEventListener("mouseleave", hideTip);
+    });
+    const notes = $("#debt-notes");
+    const uniq = new Set();
+    top.forEach(([f, d]) => d.evidence.forEach(ev => uniq.add(`<b style="color:var(--ink)">${disp(f)}</b> — ${esc(ev)}`)));
+    [...uniq].slice(0, 5).forEach(n => notes.appendChild(el("li", null, n)));
+    notes.appendChild(el("li", null, `Debt blends coupling (30%), churn (20%), complexity (20%) and test signal — ${esc(D.repo.name)}'s core hub modules carry the highest scores, exactly where you'd expect.`));
+  })();
+
+  /* ================= VIEW 1: force graph ================= */
+  
+  const graph = (() => {
+    let currentViewMode = "architecture"; // architecture | raw
+    let currentColorMode = "role"; // role | subsystem | layer | debt
+
+    const seen = new Set(), allEdges = [];
+    D.edges.forEach(([a, b]) => { const k = a + "→" + b; if (!seen.has(k) && a !== b) { seen.add(k); allEdges.push([a, b]); } });
+    const deg = {}; allEdges.forEach(([a, b]) => { deg[a] = (deg[a] || 0) + 1; deg[b] = (deg[b] || 0) + 1; });
+
+    const svg = $("#graph-svg");
+    if (!svg) throw new Error("SVG element #graph-svg not found");
+    let vb = { x: 0, y: 0, w: 1000, h: 1000 };
+    const applyVB = () => svg.setAttribute("viewBox", `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+    let dragMoved = false;
+
+    // We will rerender the graph when filters/mode change
+    const renderGraph = () => {
+      try {
+        svg.innerHTML = "";
+
+        const isArch = currentViewMode === "architecture";
+      const hideGenerated = ($("#filter-generated") || {checked: false}).checked;
+      const collapseTests = ($("#filter-tests") || {checked: false}).checked;
+      const collapsePkgs = ($("#filter-packages") || {checked: false}).checked;
+      const onlyBiz = ($("#filter-business") || {checked: false}).checked;
+
+      let graphFiles = [];
+      let pseudoNodes = [];
+      let pseudoEdges = [];
+
+      let numTests = 0, numPkgs = 0;
+      let testNodes = new Set(), pkgNodes = new Set();
+
+      files.forEach(f => {
+        const r = D.files[f].role;
+        if (isArch && onlyBiz && r !== "Business Logic" && r !== "Controller" && r !== "Service" && r !== "Model" && r !== "Repository" && r !== "Utility") return;
+        
+        if (isArch && hideGenerated && (r === "Generated" || r === "Documentation" || r === "Examples" || r === "Scripts")) return;
+        
+        if (isArch && collapseTests && r === "Test") {
+          numTests++; testNodes.add(f); return;
+        }
+        if (isArch && collapsePkgs && r === "Package") {
+          numPkgs++; pkgNodes.add(f); return;
+        }
+
+        graphFiles.push(f);
+      });
+
+      if (numTests > 0) {
+        pseudoNodes.push({ id: "__GROUP_TESTS__", label: `Tests (${numTests} files)`, role: "Test", r: 15 + Math.sqrt(numTests)*2, x: 0, y: 0, vx: 0, vy: 0, m: {fanIn: 0, fanOut: 0, layer: -1, debt: 0, importance: 0.5, subsystem: -1} });
+      }
+      if (numPkgs > 0) {
+        pseudoNodes.push({ id: "__GROUP_PKGS__", label: `Packages (${numPkgs} files)`, role: "Package", r: 15 + Math.sqrt(numPkgs)*2, x: 0, y: 0, vx: 0, vy: 0, m: {fanIn: 0, fanOut: 0, layer: -1, debt: 0, importance: 0.5, subsystem: -1} });
+      }
+
+      // Filter edges
+      const graphNodesSet = new Set(graphFiles);
+      const filteredEdges = [];
+      allEdges.forEach(([a, b]) => {
+        const aGrp = testNodes.has(a) ? "__GROUP_TESTS__" : (pkgNodes.has(a) ? "__GROUP_PKGS__" : a);
+        const bGrp = testNodes.has(b) ? "__GROUP_TESTS__" : (pkgNodes.has(b) ? "__GROUP_PKGS__" : b);
+        
+        if ((graphNodesSet.has(a) || aGrp.startsWith("__GROUP")) && 
+            (graphNodesSet.has(b) || bGrp.startsWith("__GROUP"))) {
+            if (aGrp !== bGrp) filteredEdges.push([aGrp, bGrp]);
+        }
+      });
+
+      // dedupe grouped edges
+      const uniqEdges = [];
+      const seenE = new Set();
+      filteredEdges.forEach(([a, b]) => {
+        const k = a + "->" + b;
+        if (!seenE.has(k)) { seenE.add(k); uniqEdges.push([a, b]); }
+      });
+
+      // top-N limitation for raw mode
+      if (!isArch && graphFiles.length > 400) {
+         graphFiles = [...graphFiles].sort((a, b) => D.files[b].importance - D.files[a].importance).slice(0, 400);
+      }
+      
+      const allGraphNodeIds = new Set(graphFiles);
+      pseudoNodes.forEach(pn => allGraphNodeIds.add(pn.id));
+      
+      const finalEdges = uniqEdges.filter(([a, b]) => allGraphNodeIds.has(a) && allGraphNodeIds.has(b));
+
+      // Build node array
+      const RS = graphFiles.length > 200 ? 0.6 : 1;
+      const nodes = graphFiles.map(f => ({
+        id: f,
+        label: base(f),
+        role: D.files[f].role,
+        m: D.files[f],
+        r: isArch ? Math.max(5, (10 + D.files[f].importance * 40)) * RS : (4.5 + Math.sqrt((D.files[f].fanIn + D.files[f].fanOut)) * 1.7) * RS,
+        x: Math.random()*200 - 100, y: Math.random()*200 - 100, vx: 0, vy: 0
+      })).concat(pseudoNodes);
+
+      const idx = {}; nodes.forEach((n, i) => idx[n.id] = i);
+      const links = finalEdges.map(([a, b]) => [idx[a], idx[b]]);
+
+      // Seed positions by subsystem
+      const rankOf = {}; subOrder.forEach((s, rank) => s.members.forEach(f => rankOf[f] = rank));
+      nodes.forEach((n, i) => {
+        const rank = rankOf[n.id] ?? (i % 10);
+        const cx0 = rank === 0 ? 0 : Math.cos(rank * 2.3999) * 320;
+        const cy0 = rank === 0 ? 0 : Math.sin(rank * 2.3999) * 320;
+        n.x = cx0 + Math.random()*40;
+        n.y = cy0 + Math.random()*40;
+      });
+
+      // Simulate
+      const TICKS = Math.max(100, Math.min(300, Math.round(300 * 100 / Math.max(nodes.length, 1))));
+      for (let t = 0; t < TICKS; t++) {
+        const alpha = 1 - t / TICKS;
+        // Grouping force by role/subsystem
+        for (let i = 0; i < nodes.length; i++) {
+            for (let j = i + 1; j < nodes.length; j++) {
+                const a = nodes[i], b = nodes[j];
+                let dx = b.x - a.x, dy = b.y - a.y;
+                let d2 = dx * dx + dy * dy; 
+                if (d2 < 1) { d2 = 1; dx = Math.random() - .5; dy = Math.random() - .5; }
+                const isSameSubsys = a.m.subsystem === b.m.subsystem && a.m.subsystem >= 0;
+                const isSameRole = a.role === b.role;
+                
+                // Repulsion
+                let rep = Math.min(12, 3000 / d2) * alpha;
+                if (isSameSubsys || isSameRole) rep *= 0.3; // Less repulsion for same group
+
+                const d = Math.sqrt(d2);
+                a.vx -= dx / d * rep; a.vy -= dy / d * rep; 
+                b.vx += dx / d * rep; b.vy += dy / d * rep;
+            }
+        }
+        links.forEach(([ai, bi]) => {
+          const a = nodes[ai], b = nodes[bi];
+          const dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+          const want = 60 + (a.r + b.r);
+          const f = (d - want) / d * 0.1 * alpha;
+          a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f;
+        });
+        nodes.forEach(n => {
+          n.vx -= n.x * 0.005 * alpha; n.vy -= n.y * 0.005 * alpha;
+          const vmax = 20;
+          n.vx = Math.max(-vmax, Math.min(vmax, n.vx));
+          n.vy = Math.max(-vmax, Math.min(vmax, n.vy));
+          n.x += n.vx; n.y += n.vy; n.vx *= 0.85; n.vy *= 0.85;
+        });
+      }
+      
+      // collision pass
+      for (let t = 0; t < 150; t++) {
+        let moved = false;
+        for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i], b = nodes[j];
+          let dx = b.x - a.x, dy = b.y - a.y;
+          let d = Math.sqrt(dx * dx + dy * dy);
+          const min = a.r + b.r + 6;
+          if (d >= min) continue;
+          if (d < 0.01) { dx = Math.random() - .5; dy = Math.random() - .5; d = Math.sqrt(dx * dx + dy * dy); }
+          const overlap = (min - d) / d;
+          const wA = b.r / (a.r + b.r), wB = a.r / (a.r + b.r);
+          a.x -= dx * overlap * wA; a.y -= dy * overlap * wA;
+          b.x += dx * overlap * wB; b.y += dy * overlap * wB;
+          moved = true;
+        }
+        if (!moved) break;
+      }
+
+      if (finalEdges.length > 600 || nodes.length > 200) svg.classList.add("dense");
+      else svg.classList.remove("dense");
+      
+      const NS = "http://www.w3.org/2000/svg";
+      const xs = nodes.map(n => n.x), ys = nodes.map(n => n.y);
+      const pad = 60;
+      const q = (arr, p) => { const s = [...arr].sort((a, b) => a - b); return s[Math.round((s.length - 1) * p)] || 0; };
+      const x0 = q(xs, .02), x1 = q(xs, .98), y0 = q(ys, .02), y1 = q(ys, .98);
+      const bb = { x: x0 - pad, y: y0 - pad, w: Math.max(x1 - x0, 100) + pad * 2, h: Math.max(y1 - y0, 100) + pad * 2 };
+      vb = { ...bb };
+      applyVB();
+
+      const gE = document.createElementNS(NS, "g"), gN = document.createElementNS(NS, "g"), gL = document.createElementNS(NS, "g");
+      svg.append(gE, gN, gL);
+
+      const adj = {}; nodes.forEach(n => adj[n.id] = new Set());
+      const edgeEls = links.map(([ai, bi]) => {
+        const a = nodes[ai], b = nodes[bi];
+        adj[a.id].add(b.id); adj[b.id].add(a.id);
+        const p = document.createElementNS(NS, "path");
+        const mx = (a.x + b.x) / 2 - (b.y - a.y) * .12, my = (a.y + b.y) / 2 + (b.x - a.x) * .12;
+        p.setAttribute("d", `M${a.x},${a.y} Q${mx},${my} ${b.x},${b.y}`);
+        p.setAttribute("class", "edge");
+        p.dataset.a = a.id; p.dataset.b = b.id;
+        gE.appendChild(p); return p;
+      });
+
+      const layerVals = [...new Set(Object.values(A.layers))].sort((a, b) => a - b);
+      const layerColor = l => CAT[(layerVals.indexOf(l) * 2) % CAT.length] || "#52514e";
+      const subLegend = subOrder.slice(0, 8).map(s => [subColorOf[s.i], `${subLabel(s.members)} (${s.members.length})`]);
+      if (subOrder.length > 8) subLegend.push(["#52514e", `+ ${subOrder.length - 8} more subsystems`]);
+      
+      const roleLegend = Object.entries(roleColors).map(([r, c]) => [c, r]);
+
+      const colorers = {
+        role: n => roleColors[n.role] || "#52514e",
+        subsystem: n => (subOrder.findIndex(s => s.i === n.m.subsystem) < 8 ? subColorOf[n.m.subsystem] : "#52514e") || "#52514e",
+        layer: n => n.m.layer >= 0 ? layerColor(n.m.layer) : "#52514e",
+        debt: n => SEQ[Math.min(6, Math.round(n.m.debt * 8))],
+      };
+      const legends = {
+        role: roleLegend,
+        subsystem: subLegend,
+        layer: layerVals.map(l => [layerColor(l), l === 0 ? "Layer 0 · foundation" : `Layer ${l}`]),
+        debt: [[SEQ[0], "low debt"], [SEQ[3], "moderate"], [SEQ[6], "high debt"]],
+      };
+
+      const nodeEls = nodes.map(n => {
+        const g = document.createElementNS(NS, "g");
+        g.setAttribute("class", "node");
+        const c = document.createElementNS(NS, "circle");
+        c.setAttribute("cx", n.x); c.setAttribute("cy", n.y); c.setAttribute("r", n.r);
+        c.setAttribute("class", "pop"); c.style.animationDelay = (100 + Math.random() * 400) + "ms";
+        g.appendChild(c); gN.appendChild(g);
+        
+        g.addEventListener("mousemove", e => {
+          if(n.id.startsWith("__GROUP")) {
+            showTip(`<b>${n.label}</b><div style="margin-top:5px;color:var(--muted)">Filtered group</div>`, e.clientX, e.clientY);
+          } else {
+            showTip(`<b>${esc(n.id)}</b>
+              <div class="tr2"><span>role</span><span style="color:${roleColors[n.role]}">${n.role}</span></div>
+              <div class="tr2"><span>importance</span><span>${n.m.importance.toFixed(3)}</span></div>
+              <div class="tr2"><span>centrality</span><span>${n.m.centrality.toFixed(3)}</span></div>
+              <div class="tr2"><span>pagerank</span><span>${n.m.pagerank.toFixed(3)}</span></div>
+              <div class="tr2"><span>degree</span><span>${n.m.fanIn + n.m.fanOut}</span></div>
+              <div style="margin-top:5px;color:#86b6ef">click → impact analysis</div>`, e.clientX, e.clientY);
+          }
+          highlight(n.id);
+        });
+        g.addEventListener("mouseleave", () => { hideTip(); highlight(null); });
+        g.addEventListener("click", () => { if (dragMoved || n.id.startsWith("__GROUP")) return; selectFile(n.id); setView("impact"); });
+        return g;
+      });
+
+      // labels for top important nodes
+      let numLabels = isArch ? 20 : 12;
+      [...nodes].sort((a, b) => b.m.importance - a.m.importance).slice(0, numLabels).forEach(n => {
+        const t = document.createElementNS(NS, "text");
+        t.setAttribute("x", n.x); t.setAttribute("y", n.y - n.r - 5);
+        t.setAttribute("text-anchor", "middle"); t.setAttribute("class", "nlabel");
+        t.textContent = n.label;
+        gL.appendChild(t);
+      });
+
+      const recolor = () => {
+        nodes.forEach((n, i) => nodeEls[i].querySelector("circle").setAttribute("fill", colorers[currentColorMode](n)));
+        const lg = $("#graph-legend"); lg.innerHTML = "";
+        legends[currentColorMode].forEach(([c, l]) => lg.appendChild(el("span", "li", `<span class="sw" style="background:${c}"></span>${l}`)));
+      };
+      recolor();
+
+      const highlight = id => {
+        if (!id) {
+          nodeEls.forEach(g => g.classList.remove("dim"));
+          edgeEls.forEach(p => p.classList.remove("dim", "lit"));
+          return;
+        }
+        const keep = adj[id]; keep.add(id);
+        nodes.forEach((n, i) => nodeEls[i].classList.toggle("dim", !keep.has(n.id)));
+        edgeEls.forEach(p => {
+          const lit = p.dataset.a === id || p.dataset.b === id;
+          p.classList.toggle("lit", lit); p.classList.toggle("dim", !lit);
+        });
+        keep.delete(id);
+      };
+      } catch (e) {
+        console.error("renderGraph error:", e);
+        svg.innerHTML = `<text x="50" y="50" fill="red">Error: ${e.message}</text>`;
+      }
+    };
+
+    renderGraph();
+
+    $$("#view-mode-seg button").forEach(b => b.addEventListener("click", () => {
+      $$("#view-mode-seg button").forEach(x => x.classList.toggle("on", x === b));
+      currentViewMode = b.dataset.mode;
+      const f = $("#graph-filters");
+      if (currentViewMode === "raw") f.style.display = "none";
+      else f.style.display = "flex";
+      renderGraph();
+    }));
+
+    $$("#color-seg button").forEach(b => b.addEventListener("click", () => {
+      $$("#color-seg button").forEach(x => x.classList.toggle("on", x === b));
+      currentColorMode = b.dataset.mode;
+      // We don't need to re-render physics, just re-run recolor but since it's trapped in renderGraph scope...
+      // We actually should make recolor accessible outside, but for simplicity we can just re-render.
+      // Wait, let's just trigger renderGraph()!
+      renderGraph();
+    }));
+
+    $$("#graph-filters input").forEach(chk => chk.addEventListener("change", renderGraph));
+
+    // zoom & pan
+    svg.addEventListener("wheel", e => {
+      e.preventDefault();
+      const k = e.deltaY > 0 ? 1.12 : 1 / 1.12;
+      const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+      const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+      vb = { x: p.x - (p.x - vb.x) * k, y: p.y - (p.y - vb.y) * k, w: vb.w * k, h: vb.h * k };
+      applyVB();
+    }, { passive: false });
+
+    let drag = null;
+    svg.addEventListener("pointerdown", e => { drag = { x: e.clientX, y: e.clientY, vb: { ...vb }, id: e.pointerId }; dragMoved = false; });
+    svg.addEventListener("pointermove", e => {
+      if (!drag) return;
+      if (!dragMoved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 4) {
+        dragMoved = true;
+        svg.setPointerCapture(drag.id);
+      }
+      if (!dragMoved) return;
+      const scale = vb.w / svg.clientWidth;
+      vb.x = drag.vb.x - (e.clientX - drag.x) * scale;
+      vb.y = drag.vb.y - (e.clientY - drag.y) * scale;
+      applyVB();
+    });
+    svg.addEventListener("pointerup", () => drag = null);
+    $("#reset-zoom").addEventListener("click", () => { renderGraph(); });
+    svg.addEventListener("dblclick", () => { renderGraph(); });
+
+    return { edges: allEdges };
+  })();
+
+
+  /* ================= VIEW 2: file picker + impact ================= */
+  let currentFile = null;
+  const impactOf = f => D.impact[f] || { blast_radius: 0, risk: 0, direct: [], transitive: [], evidence: [] };
+  // stored dependent lists are capped in data.js; exact counts travel separately
+  const nDirect = im => im.direct_count ?? im.direct.length;
+  const nTrans = im => im.transitive_count ?? im.transitive.length;
+
+  const LIST_CAP = 400; // rows rendered at once; search reaches everything
+  const buildFileList = filter => {
+    const list = $("#file-list"); list.innerHTML = "";
+    const groups = {};
+    const matches = files.filter(f => !filter || f.toLowerCase().includes(filter.toLowerCase()));
+    matches.slice(0, LIST_CAP)
+      .forEach(f => { const dir = f.split("/").slice(0, -1).join("/") || "."; (groups[dir] = groups[dir] || []).push(f); });
+    Object.keys(groups).sort().forEach(dir => {
+      list.appendChild(el("div", "fgroup", esc(dir)));
+      groups[dir].sort().forEach(f => {
+        const im = impactOf(f);
+        const b = el("button", "frow" + (f === currentFile ? " sel" : ""),
+          `<span class="fn">${esc(base(f))}</span><span class="br ${im.blast_radius >= 5 ? "hot" : ""}">${im.blast_radius ? "blast " + im.blast_radius : ""}</span>`);
+        b.addEventListener("click", () => selectFile(f));
+        list.appendChild(b);
+      });
+    });
+    if (matches.length > LIST_CAP)
+      list.appendChild(el("div", "empty-note", `… ${fmt(matches.length - LIST_CAP)} more — type to narrow down`));
+  };
+  $("#file-search").addEventListener("input", e => buildFileList(e.target.value));
+
+  // suggested chips: top blast + top debt + top risk
+  (() => {
+    const wrap = $("#file-chips");
+    const byBlast = [...files].sort((a, b) => impactOf(b).blast_radius - impactOf(a).blast_radius)[0];
+    const byDebt = [...coreFiles].sort((a, b) => (D.files[b].debt || 0) - (D.files[a].debt || 0))[0];
+    const byFan = [...files].sort((a, b) => D.files[b].fanIn - D.files[a].fanIn)[0];
+    [["largest blast", byBlast], ["highest debt", byDebt], ["most imported", byFan]].forEach(([label, f]) => {
+      const c = el("button", "chip", `${label}: <b>${esc(base(f))}</b>`);
+      c.addEventListener("click", () => selectFile(f));
+      wrap.appendChild(c);
+    });
+  })();
+
+  const riskBand = r => r < 0.35 ? ["Low", "var(--good)", "●"] : r < 0.65 ? ["Moderate", "var(--warn)", "◆"] : ["High", "var(--serious)", "▲"];
+
+  function selectFile(f) {
+    currentFile = f;
+    const im = impactOf(f), m = D.files[f];
+    buildFileList($("#file-search").value);
+    $("#blast-file").innerHTML = `<code style="color:var(--ink)">${esc(f)}</code>`;
+
+    // tiles
+    const tiles = [
+      { v: im.blast_radius, k: "Files Impacted", note: nTrans(im) > 0 ? "Across up to 3 dependency levels" : "Direct dependents only" },
+      { v: nDirect(im), k: "direct dependents", note: "import this file" },
+      { v: nTrans(im), k: "transitive dependents", note: "reached through others" },
+      { v: m.symbols, k: "symbols inside", note: `imported by ${m.fanIn} · churn ${m.churn} commits` },
+    ];
+    const tw = $("#impact-tiles"); tw.innerHTML = "";
+    tiles.forEach((t, i) => {
+      const d = el("div", "tile", `<div class="v">${t.v}</div><div class="k">${t.k}</div><div class="note">${t.note}</div>`);
+      d.style.animationDelay = (i * 50) + "ms"; tw.appendChild(d);
+    });
+
+    // risk chip
+    const [lbl, col, ic] = riskBand(im.risk);
+    $("#risk-label").innerHTML = `<span class="risk-chip" style="background:${col}22;border-color:${col};color:${col}">${ic} ${lbl} Risk</span> <span class="risk-score-sub">score ${im.risk.toFixed(2)}</span>`;
+    const rf = $("#risk-fill"); rf.style.background = col;
+    rf.style.width = (im.risk * 100) + "%";
+
+    // evidence
+    const evl = $("#impact-evidence"); evl.innerHTML = "";
+    (im.evidence.length ? im.evidence : ["No inbound dependencies — change is contained to this file."])
+      .forEach(e => evl.appendChild(el("li", null, esc(e))));
+
+    // dependent lists (stored lists are capped; counts are exact)
+    const fill = (sel, arr, total) => {
+      const u = $(sel); u.innerHTML = "";
+      if (!arr.length) { u.appendChild(el("li", null, `<span class="empty-note">none</span>`)); return; }
+      arr.forEach(d => {
+        const li = el("li", null, esc(d)); li.title = "analyze " + d;
+        li.addEventListener("click", () => selectFile(d));
+        u.appendChild(li);
+      });
+      if (total > arr.length)
+        u.appendChild(el("li", null, `<span class="empty-note">… ${total - arr.length} more</span>`));
+    };
+    fill("#dep-direct", im.direct, nDirect(im));
+    fill("#dep-trans", im.transitive, nTrans(im));
+
+    drawBlast(f, im);
+  }
+
+  function drawBlast(f, im) {
+    const svg = $("#blast-svg"); svg.innerHTML = "";
+    const NS = "http://www.w3.org/2000/svg";
+    const W = 760, H = 520, cx = 0, cy = 0;
+    svg.setAttribute("viewBox", `${-W / 2} ${-H / 2} ${W} ${H}`);
+    const mk = (t, at) => { const e = document.createElementNS(NS, t); for (const k in at) e.setAttribute(k, at[k]); return e; };
+
+    const R1 = 140, R2 = 232;
+    svg.appendChild(mk("circle", { class: "ring", cx, cy, r: R1 }));
+    svg.appendChild(mk("circle", { class: "ring", cx, cy, r: R2 }));
+    svg.appendChild(mk("circle", { class: "ripple", cx, cy, r: 26 }));
+    svg.appendChild(mk("circle", { class: "ripple r2", cx, cy, r: 26 }));
+
+    const place = (arr, R) => arr.map((id, i) => {
+      const a = -Math.PI / 2 + i * 2 * Math.PI / Math.max(arr.length, 1);
+      return { id, x: Math.cos(a) * R, y: Math.sin(a) * R };
+    });
+    const direct = place(im.direct.slice(0, 24), R1);
+    const trans = place(im.transitive.slice(0, 22), R2);
+    const pos = { [f]: { x: 0, y: 0 } };
+    [...direct, ...trans].forEach(p => pos[p.id] = p);
+
+    // real edges among the impacted set
+    const inSet = new Set([f, ...im.direct, ...im.transitive]);
+    const gE = document.createElementNS(NS, "g"); svg.appendChild(gE);
+    const drawn = new Set();
+    graph.edges.forEach(([a, b]) => {
+      if (inSet.has(a) && inSet.has(b) && pos[a] && pos[b]) {
+        const k = a + "→" + b; if (drawn.has(k)) return; drawn.add(k);
+        const A2 = pos[a], B2 = pos[b];
+        const mx = (A2.x + B2.x) / 2 * .55, my = (A2.y + B2.y) / 2 * .55;
+        gE.appendChild(mk("path", { class: "bedge", d: `M${A2.x},${A2.y} Q${mx},${my} ${B2.x},${B2.y}` }));
+      }
+    });
+    // guarantee a spoke from every direct dependent to center
+    direct.forEach(p => gE.appendChild(mk("path", { class: "bedge", d: `M${p.x},${p.y} L0,0` })));
+
+    const node = (p, r, fill, cls) => {
+      const g = document.createElementNS(NS, "g"); g.setAttribute("class", "bnode " + (cls || ""));
+      const c = mk("circle", { cx: p.x, cy: p.y, r, fill, class: "pop" });
+      c.style.animationDelay = (80 + Math.random() * 500) + "ms";
+      g.appendChild(c);
+      const t = mk("text", { x: p.x, y: p.y + r + 13, class: "blabel" });
+      t.textContent = base(p.id); g.appendChild(t);
+      g.addEventListener("mousemove", e => showTip(`<b>${esc(p.id)}</b><div style="color:#86b6ef">click to analyze this file</div>`, e.clientX, e.clientY));
+      g.addEventListener("mouseleave", hideTip);
+      g.addEventListener("click", () => selectFile(p.id));
+      svg.appendChild(g);
+    };
+    trans.forEach(p => node(p, 8, "#9085e9"));
+    direct.forEach(p => node(p, 11, "#3987e5"));
+    // center
+    const g = document.createElementNS(NS, "g");
+    g.appendChild(mk("circle", { cx: 0, cy: 0, r: 24, fill: "#e66767", stroke: "rgba(0,0,0,.5)" }));
+    const ct = mk("text", { x: 0, y: 44, class: "center-label" }); ct.textContent = base(f);
+    g.appendChild(ct); svg.appendChild(g);
+    const hiddenD = nDirect(im) - direct.length, hiddenT = nTrans(im) - trans.length;
+    if (hiddenD > 0 || hiddenT > 0) {
+      const parts = [];
+      if (hiddenD > 0) parts.push(`${hiddenD} more direct`);
+      if (hiddenT > 0) parts.push(`${hiddenT} more transitive`);
+      const more = mk("text", { x: 0, y: H / 2 - 14, class: "blabel" });
+      more.textContent = `+ ${parts.join(" · ")} dependents not drawn`;
+      svg.appendChild(more);
+    }
+  }
+
+  // default selection: largest blast radius
+  buildFileList("");
+  selectFile([...files].sort((a, b) => impactOf(b).blast_radius - impactOf(a).blast_radius)[0]);
+
+  /* ================= VIEW 3: trust ================= */
+  (() => {
+    const B = D.benchmarks;
+
+    // Trust strip — data-derived trust signals
+    const datasets = Object.values(B.datasets);
+    const anyManifest = datasets.length > 0 ? datasets[0].manifest : null;
+    const authoredBy = (anyManifest && anyManifest.ground_truth_authored_by) || "human";
+    const allSuites = new Set();
+    datasets.forEach(d => (d.manifest.suites || []).forEach(s => allSuites.add(s)));
+    const trustItems = [
+      { title: "Human-authored Ground Truth", body: `Verified against ${authoredBy}-authored ground truth, independent of Ortho's own output.` },
+      { title: "Independent Verification", body: `Ground truth for ${datasets.map(d=>d.manifest.repo).join(" & ")} authored by reading source directly, not by trusting Ortho's own analysis.` },
+      { title: "Deterministic Benchmarks", body: `${fmt(B.test_count)} automated tests across ${allSuites.size} benchmark suites, golden-snapshot regression locked in CI.` },
+      { title: "Honest Failure Reporting", body: `Known limitations (relative-import resolution, retrieval scope) are documented and reported as-is, not tuned away.` },
+    ];
+    const ts = $("#trust-strip");
+    trustItems.forEach(t => ts.appendChild(el("div", "trust-item", `<span class="ti-icon">✓</span><b>${esc(t.title)}</b><span>${esc(t.body)}</span>`)));
+
+    // Validation status indicator
+    const validatedRepos = datasets.map(d => d.manifest.repo);
+    const validationNote = document.createElement("div");
+    validationNote.style.cssText = "color:var(--muted);font-size:12px;margin-top:16px;padding:10px;border-top:1px solid var(--border-soft);display:flex;gap:8px;align-items:baseline";
+    const currentRepoIsValidated = B.repo_results !== null && B.repo_results !== undefined;
+    const validationIcon = currentRepoIsValidated ? "✓" : "○";
+    const validationColor = currentRepoIsValidated ? "var(--good)" : "var(--muted)";
+    validationNote.innerHTML = `<span style="color:${validationColor};font-weight:700">${validationIcon}</span><span><b>${D.repo.name}</b> is ${currentRepoIsValidated ? "validated" : "not yet validated"} against ground truth. ${currentRepoIsValidated ? "This repo has " + (B.repo_results ? B.repo_results.length : 0) + " benchmark suites tested." : "Validated repos: " + (validatedRepos.length > 0 ? validatedRepos.join(", ") : "Click, Flask")}</span>`;
+    ts.parentNode.insertBefore(validationNote, ts.nextSibling);
+
+    const tiles = [
+      { v: fmt(B.test_count), k: "benchmark tests", note: "verified by real pytest runs" },
+      { v: Object.keys(B.datasets).length, k: "ground-truth datasets", note: "hand-authored · commit-pinned" },
+      { v: allSuites.size, k: "benchmark suites", note: "correctness, not vibes" },
+    ];
+    const tw = $("#trust-tiles");
+    tiles.forEach((t, i) => {
+      const d = el("div", "tile", `<div class="v">${t.v}</div><div class="k">${t.k}</div><div class="note">${t.note}</div>`);
+      d.style.animationDelay = (i * 60) + "ms"; tw.appendChild(d);
+    });
+
+    // dataset cards
+    const dsCard = (id, ds) => {
+      const m = B.datasets[ds].manifest, g = B.datasets[ds].ground_truth_counts;
+      const gtItems = [["symbols", g.symbols], ["import edges", g.imports], ["call edges", g.callgraph], ["arch. facts", g.architecture], ["impact pairs", g.impact], ["retrieval Qs", g.retrieval]];
+      $(id).innerHTML = `
+        <h3>Dataset · ${m.repo}</h3>
+        <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+          <b style="font-size:18px">${m.url.replace("https://github.com/", "")}</b>
+          <span class="commit">@ ${m.commit.slice(0, 10)}</span>
+        </div>
+        <div style="color:var(--muted);font-size:12.5px;margin-top:4px">
+          ${fmt(m.size_loc)} LOC · ground truth authored by ${m.ground_truth_authored_by}, ${m.ground_truth_date} — independent of Ortho's own output
+        </div>
+        <div class="gt-counts">${gtItems.map(([k, v]) => `<span class="g"><b>${fmt(v)}</b> ${k}</span>`).join("")}</div>`;
+    };
+    dsCard("#ds-flask", "flask");
+    dsCard("#ds-click", "click");
+
+    // representative benchmark bars — this repo's own run when ground truth
+    // exists for it, otherwise the framework's flask reference run
+    const own = !!(B.repo_results && B.repo_results.length);
+    const src = own ? B.repo_results : B.golden;
+    $("#bench-title").textContent = own
+      ? `Representative results — ${D.repo.name} benchmark run`
+      : "Representative results — flask reference run";
+    $("#bench-note").textContent = own
+      ? "Measured live against this repository's hand-authored ground truth. Recall is scored on a curated audit set of core files; Ortho additionally extracts the full inventory beyond it."
+      : `No hand-authored ground truth exists for ${D.repo.name} yet, so these are the framework's results on the flask reference dataset — they validate the tool, not this repository.`;
+    const byName = {}; src.forEach(s => { if (s.status === "SUCCESS") byName[s.suite] = s.metrics; });
+    const rows = [];
+    const add = (label, v) => { if (v != null) rows.push([label, v]); };
+    add("Parse success", byName.repository && byName.repository.parse_success_rate);
+    add("Symbol recall", byName.repository && byName.repository.symbols_recall);
+    add("Call-graph recall", byName.repository && byName.repository.callgraph_recall);
+    add("Style accuracy", byName.architecture && byName.architecture.architecture_style_accuracy);
+    add("Dependency direction", byName.architecture && byName.architecture.dependency_direction_accuracy);
+    add("Impact precision", byName.impact && byName.impact.impact_precision);
+    const wrap = $("#bench-bars");
+    rows.forEach(([name, v]) => {
+      const row = el("div", "bar-row",
+        `<span class="bl">${name}</span>
+         <span class="tr"><i class="fl" style="background:${v >= 0.99 ? "#199e70" : "#3987e5"}"></i></span>
+         <span class="vv">${Math.round(v * 100)}%</span>`);
+      row.querySelector(".fl").style.width = (v * 100) + "%";
+      wrap.appendChild(row);
+    });
+  })();
+  } catch (e) {
+    console.error("Dashboard error:", e);
+    document.getElementById("boot").remove();
+    document.querySelector("main").innerHTML =
+      '<p style="padding:60px 0;color:#c3c2b7">Error loading dashboard: ' + esc(e.message) + '</p>';
+  }
+})();
+</script>
+</body>
+</html>

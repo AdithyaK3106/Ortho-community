@@ -1,0 +1,7 @@
+/* App.css kept minimal — theme is defined in index.css */
+.App {
+    background: var(--ortho-bg);
+    color: var(--ortho-text);
+    min-height: 100vh;
+}
+/* Hot reload test - change at 2026-07-12 12:50:30 IST */
