@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/'https://AdithyaK3106.github.io/Ortho-Community'/static/css/main.115f96ea.css",
-    "main.js": "/'https://AdithyaK3106.github.io/Ortho-Community'/static/js/main.857e9da9.js",
-    "index.html": "/'https://AdithyaK3106.github.io/Ortho-Community'/index.html",
-    "main.115f96ea.css.map": "/'https://AdithyaK3106.github.io/Ortho-Community'/static/css/main.115f96ea.css.map",
-    "main.857e9da9.js.map": "/'https://AdithyaK3106.github.io/Ortho-Community'/static/js/main.857e9da9.js.map"
+    "main.css": "/static/css/main.115f96ea.css",
+    "main.js": "/static/js/main.f9202836.js",
+    "index.html": "/index.html",
+    "main.115f96ea.css.map": "/static/css/main.115f96ea.css.map",
+    "main.f9202836.js.map": "/static/js/main.f9202836.js.map"
   },
   "entrypoints": [
     "static/css/main.115f96ea.css",
-    "static/js/main.857e9da9.js"
+    "static/js/main.f9202836.js"
   ]
 }
