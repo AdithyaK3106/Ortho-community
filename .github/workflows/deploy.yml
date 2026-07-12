@@ -1,0 +1,72 @@
+name: Deploy Landing Page
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'landing/**'
+      - '.github/workflows/deploy.yml'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        working-directory: landing
+        run: npm ci
+
+      - name: Update homepage for GitHub Pages
+        working-directory: landing
+        run: npm pkg set homepage='https://AdithyaK3106.github.io/Ortho-Community'
+
+      - name: Build
+        working-directory: landing
+        run: npm run build
+
+      - name: Upload build to gh-pages
+        uses: actions/upload-artifact@v3
+        with:
+          name: build
+          path: landing/build/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download build
+        uses: actions/download-artifact@v3
+        with:
+          name: build
+          path: build-output/
+
+      - name: Deploy to gh-pages
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git checkout --orphan gh-pages
+          git rm -rf .
+          cp -r build-output/* .
+          git add .
+          git commit -m "Deploy: $(date)"
+          git push -f origin gh-pages
